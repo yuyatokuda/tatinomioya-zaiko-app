@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>在庫管理アプリ Ultimate</title>
+    <title>在庫管理アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -15,31 +15,43 @@
             .no-print { display: none !important; }
             .print-only { display: block !important; }
         }
-        /* ドラッグ中の見た目 */
-        .sortable-ghost { opacity: 0.4; background-color: #f3f4f6; transform: scale(0.98); }
+        .sortable-ghost { opacity: 0.4; background-color: #f3f4f6; transform: scale(0.98); border: 2px dashed #cbd5e1; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans pb-24 selection:bg-[#F27D26] selection:text-white">
     <div id="app" class="max-w-3xl mx-auto min-h-screen bg-white shadow-lg relative">
         
-        <header class="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-gray-200 no-print">
+        <header class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-gray-200 no-print">
             <div class="px-5 pt-4 pb-3 flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <h1 class="text-lg font-bold tracking-tight text-gray-800">📦 在庫管理 Ultimate</h1>
+                    <h1 class="text-lg font-bold tracking-tight text-gray-800">📦 在庫管理</h1>
                 </div>
-                <button v-if="activeTab === 'check'" @click="toggleSortMode" :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all', isSortMode ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600']">
-                    {{ isSortMode ? '並べ替え完了' : '🔃 並べ替え' }}
-                </button>
-                <div v-else class="flex bg-gray-100 rounded-full p-1 border border-gray-200">
-                    <button @click="activeTab = 'check'" class="px-4 py-1 rounded-full text-xs font-bold text-gray-500 hover:text-gray-900">在庫チェック</button>
-                    <button class="px-4 py-1 rounded-full text-xs font-bold bg-[#F27D26] text-white shadow">発注リスト</button>
+                
+                <div class="flex bg-gray-100 rounded-full p-1 border border-gray-200 shadow-inner">
+                    <button @click="activeTab = 'check'" :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all', activeTab === 'check' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-900']">
+                        在庫チェック
+                    </button>
+                    <button @click="activeTab = 'order'" :class="['px-4 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1', activeTab === 'order' ? 'bg-[#F27D26] shadow text-white' : 'text-gray-500 hover:text-gray-900']">
+                        発注リスト <span v-if="orderItemsCount > 0" class="bg-white/20 text-white px-1.5 rounded-full text-[10px]">{{ orderItemsCount }}</span>
+                    </button>
                 </div>
             </div>
 
-            <div v-if="activeTab === 'check'" class="px-5 pb-4">
-                <input v-model="searchQuery" :disabled="isSortMode" type="text" placeholder="🔍 商品名で検索..." class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:bg-white outline-none transition-all mb-3 disabled:opacity-50">
+            <div v-if="activeTab === 'check'" class="px-5 pb-4 space-y-3">
+                <div class="flex gap-2">
+                    <button v-if="!isSortMode" @click="openModal()" class="flex-1 py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-xl text-gray-600 font-bold text-sm flex items-center justify-center gap-1 transition-colors">
+                        ＋ 新規追加
+                    </button>
+                    <button @click="toggleSortMode" :class="['py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1', isSortMode ? 'w-full bg-blue-600 text-white shadow-md' : 'px-4 bg-gray-50 border border-gray-300 text-gray-600 hover:bg-gray-100']">
+                        {{ isSortMode ? '✅ 並べ替えを完了する' : '🔃 並べ替え' }}
+                    </button>
+                </div>
+
+                <div class="relative">
+                    <input v-model="searchQuery" :disabled="isSortMode" type="text" placeholder="🔍 商品名で検索..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:bg-white outline-none transition-all disabled:opacity-50">
+                </div>
                 
-                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                     <button @click="showUncheckedOnly = !showUncheckedOnly" :class="['whitespace-nowrap px-4 py-1.5 rounded-full text-xs font-bold transition-all border', showUncheckedOnly ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-white text-gray-600 border-gray-200']">
                         ✅ 未確認のみ
                     </button>
@@ -49,7 +61,7 @@
                     </button>
                 </div>
 
-                <div class="mt-2 bg-white rounded-2xl p-3 border border-gray-200 shadow-sm">
+                <div class="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
                     <div class="flex justify-between items-end mb-1">
                         <span class="text-[10px] font-bold text-gray-400">チェック進捗</span>
                         <span class="text-sm font-bold text-emerald-500">{{ progressPercent }}%</span>
@@ -62,43 +74,41 @@
         </header>
 
         <main class="p-5">
-            <div v-show="activeTab === 'check'" class="space-y-4 no-print">
-                <button v-if="!isSortMode" @click="openModal()" class="w-full py-3 bg-gray-50 hover:bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-bold text-sm flex items-center justify-center gap-2">
-                    ＋ 新しい商品を登録する
-                </button>
-
+            <div v-show="activeTab === 'check'" class="space-y-3 no-print">
                 <div id="sortable-list" class="space-y-3">
-                    <div v-for="item in filteredItems" :key="item.name" :data-name="item.name" class="bg-white border rounded-2xl p-4 flex items-center shadow-sm relative group" :class="{'border-orange-300 bg-orange-50/30': item.stock < item.threshold, 'opacity-60': isChecked(item) && !isSortMode}">
+                    <div v-for="item in filteredItems" :key="item.name" :data-name="item.name" class="bg-white border rounded-2xl p-4 flex flex-col shadow-sm relative group transition-all" :class="{'border-orange-300 bg-orange-50/30': item.stock < item.threshold, 'opacity-50 bg-gray-50': isChecked(item) && !isSortMode}">
                         
-                        <button v-if="!isSortMode" @click="openModal(item)" class="absolute top-2 right-2 p-2 text-gray-300 hover:text-gray-600 rounded-lg">✏️</button>
+                        <button v-if="!isSortMode" @click="openModal(item)" class="absolute top-2 right-2 p-2 text-gray-300 hover:text-gray-600 rounded-lg z-10">✏️</button>
 
-                        <div class="flex items-center gap-3 w-full">
-                            <div class="shrink-0 flex items-center justify-center w-8">
-                                <span v-if="isSortMode" class="drag-handle text-gray-400 text-2xl cursor-grab active:cursor-grabbing">☰</span>
+                        <div class="flex items-start gap-3 w-full mb-2">
+                            <div class="shrink-0 flex items-center justify-center w-8 pt-1">
+                                <span v-if="isSortMode" class="drag-handle text-gray-400 text-2xl cursor-grab active:cursor-grabbing hover:text-gray-900 transition-colors">☰</span>
                                 <button v-else @click="toggleCheck(item)" class="text-2xl transition-transform hover:scale-110">
                                     <span v-if="isChecked(item)">🟢</span>
                                     <span v-else class="opacity-30">⭕</span>
                                 </button>
                             </div>
 
-                            <div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 shrink-0">
+                            <div class="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 shrink-0 mt-1">
                                 <img v-if="item.image" :src="item.image" class="w-full h-full object-cover">
                                 <span v-else class="text-xl opacity-30">📷</span>
                             </div>
 
-                            <div class="flex-1 min-w-0 pr-2">
+                            <div class="flex-1 min-w-0 pr-6">
                                 <div class="flex gap-2 mb-1">
                                     <span class="text-[9px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md font-bold border border-blue-100">{{ item.location }}</span>
                                     <span v-if="item.stock < item.threshold" class="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-md font-bold border border-orange-200">不足</span>
                                 </div>
-                                <h3 :class="['font-bold text-base leading-tight truncate', isChecked(item) && !isSortMode ? 'line-through text-gray-500' : 'text-gray-900']">{{ item.name }}</h3>
+                                <h3 :class="['font-bold text-base leading-snug break-words', isChecked(item) && !isSortMode ? 'line-through text-gray-500' : 'text-gray-900']">{{ item.name }}</h3>
                                 <p class="text-[10px] text-gray-400 mt-1 font-mono">基準: {{ item.threshold }} • {{ item.vendor }}</p>
                             </div>
+                        </div>
 
-                            <div v-if="!isSortMode" class="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200 shrink-0">
-                                <button @click="updateStock(item, -1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-lg font-medium text-gray-600">-</button>
-                                <span class="w-8 text-center font-bold text-base text-gray-900 font-mono">{{ item.stock }}</span>
-                                <button @click="updateStock(item, 1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-lg font-medium text-gray-600">+</button>
+                        <div v-if="!isSortMode" class="flex justify-end pt-2 border-t border-gray-100">
+                            <div class="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200 shrink-0 shadow-inner">
+                                <button @click="updateStock(item, -1)" class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white text-xl font-medium text-gray-600 transition-colors">-</button>
+                                <span class="w-10 text-center font-bold text-lg text-gray-900 font-mono">{{ item.stock }}</span>
+                                <button @click="updateStock(item, 1)" class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white text-xl font-medium text-gray-600 transition-colors">+</button>
                             </div>
                         </div>
                     </div>
@@ -106,30 +116,39 @@
             </div>
 
             <div v-if="activeTab === 'order'" class="space-y-6">
-                <div class="flex justify-between items-center mb-4 no-print">
-                    <button @click="activeTab = 'check'" class="px-4 py-2 bg-gray-100 rounded-xl text-xs font-bold text-gray-600">← 戻る</button>
-                    <div class="flex gap-2">
-                        <button @click="exportCSV" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold">CSV</button>
-                        <button @click="printPage" class="px-3 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold">PDF/印刷</button>
-                    </div>
+                <div class="flex justify-end gap-2 mb-4 no-print">
+                    <button @click="exportCSV" class="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-colors">📥 CSV出力</button>
+                    <button @click="printPage" class="px-3 py-2 bg-gray-800 text-white rounded-xl text-xs font-bold hover:bg-gray-700 transition-colors">🖨️ PDF/印刷</button>
                 </div>
 
-                <div v-if="Object.keys(groupedOrderItems).length === 0" class="text-center py-20 text-gray-400 font-bold">✅ 発注不要です</div>
+                <div class="hidden print-only mb-6">
+                    <h1 class="text-2xl font-bold">発注書</h1>
+                    <p class="text-sm text-gray-500">作成日: {{ new Date().toLocaleDateString('ja-JP') }}</p>
+                </div>
+
+                <div v-if="Object.keys(groupedOrderItems).length === 0" class="text-center py-20 text-gray-400 font-bold border-2 border-dashed border-gray-200 rounded-3xl">
+                    ✅ すべての在庫が基準を満たしています！発注不要です。
+                </div>
 
                 <div v-for="(items, vendor) in groupedOrderItems" :key="vendor" class="bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm">
                     <div class="bg-gray-50 px-5 py-3 border-b border-gray-200 flex justify-between items-center">
                         <h2 class="font-bold text-gray-900">{{ vendor || '業者未分類' }}</h2>
-                        <span class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded-full font-bold">{{ items.length }} 品目</span>
+                        <span class="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded-full font-bold shadow-sm">{{ items.length }} 品目</span>
                     </div>
                     <div class="divide-y divide-gray-100">
-                        <div v-for="item in items" :key="item.name" class="p-4 flex justify-between items-center">
-                            <div>
-                                <h3 class="font-bold text-gray-900 text-sm">{{ item.name }}</h3>
-                                <p class="text-[10px] text-gray-500 font-mono mt-1">現在庫: {{ item.stock }} / 基準: {{ item.threshold }}</p>
+                        <div v-for="item in items" :key="item.name" class="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-4 flex-1">
+                                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 no-print shrink-0">
+                                    <img v-if="item.image" :src="item.image" class="w-full h-full object-cover">
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-900 text-sm">{{ item.name }}</h3>
+                                    <p class="text-[10px] text-gray-500 font-mono mt-1">現在庫: {{ item.stock }} / 基準: {{ item.threshold }}</p>
+                                </div>
                             </div>
-                            <div class="text-right">
+                            <div class="text-right pl-4">
                                 <div class="text-[10px] text-gray-400 font-bold mb-1">発注数</div>
-                                <div class="text-xl font-bold text-orange-600 font-mono">{{ item.threshold - item.stock }}</div>
+                                <div class="text-2xl font-bold text-orange-600 font-mono">{{ item.threshold - item.stock }}</div>
                             </div>
                         </div>
                     </div>
@@ -137,35 +156,45 @@
             </div>
         </main>
 
-        <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 no-print">
+        <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 no-print">
             <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-                <div class="p-4 border-b bg-gray-50 flex justify-between"><h2 class="font-bold">商品情報</h2><button @click="isModalOpen = false" class="text-gray-400">✕</button></div>
-                <div class="p-5 overflow-y-auto space-y-4">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center"><h2 class="font-bold text-gray-800">{{ editingItem ? '商品の編集' : '新しい商品の登録' }}</h2><button @click="isModalOpen = false" class="text-gray-400 hover:text-gray-800 text-xl font-bold px-2">✕</button></div>
+                <div class="p-6 overflow-y-auto space-y-4">
                     <div class="flex flex-col items-center">
-                        <div class="relative w-24 h-24 rounded-2xl bg-gray-100 border-2 border-dashed flex justify-center items-center overflow-hidden mb-2">
+                        <div class="relative w-28 h-28 rounded-3xl bg-gray-100 border-2 border-dashed border-gray-300 flex justify-center items-center overflow-hidden mb-3">
                             <img v-if="formData.image" :src="formData.image" class="w-full h-full object-cover">
-                            <span v-else class="text-3xl opacity-30">📷</span>
+                            <span v-else class="text-4xl opacity-30">📷</span>
                         </div>
-                        <input type="file" accept="image/*" @change="handleImageUpload" class="text-xs text-gray-500">
+                        <input type="file" accept="image/*" @change="handleImageUpload" class="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-[#F27D26]/10 file:text-[#F27D26] hover:file:bg-[#F27D26]/20">
                     </div>
-                    <input v-model="formData.name" :disabled="!!editingItem" type="text" placeholder="商品名 *" class="w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50">
-                    <div class="grid grid-cols-2 gap-4">
-                        <input v-model="formData.location" type="text" placeholder="場所" class="w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm">
-                        <input v-model="formData.vendor" type="text" placeholder="業者名" class="w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 mb-1 block">商品名 *</label>
+                        <input v-model="formData.name" :disabled="!!editingItem" type="text" placeholder="例: 角ハイボール" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold disabled:opacity-50 focus:bg-white outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="text-[10px] text-gray-500">現在庫</label><input v-model.number="formData.stock" type="number" class="w-full bg-gray-50 border rounded-xl px-4 py-2 text-sm"></div>
-                        <div><label class="text-[10px] text-gray-500">基準</label><input v-model.number="formData.threshold" type="number" class="w-full bg-gray-50 border rounded-xl px-4 py-2 text-sm"></div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block">場所</label>
+                            <input v-model="formData.location" type="text" list="loc-list" placeholder="冷蔵庫" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white outline-none">
+                            <datalist id="loc-list"><option v-for="l in uniqueLocations" :value="l"></option></datalist>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 mb-1 block">業者名</label>
+                            <input v-model="formData.vendor" type="text" placeholder="酒販店" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-[10px] font-bold text-gray-500 mb-1 block">現在庫</label><input v-model.number="formData.stock" type="number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white outline-none"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 mb-1 block">基準在庫</label><input v-model.number="formData.threshold" type="number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:bg-white outline-none"></div>
                     </div>
                 </div>
-                <div class="p-4 bg-gray-50 flex justify-between border-t">
-                    <button v-if="editingItem" @click="deleteItem" class="text-red-500 text-sm font-bold">🗑 削除</button><span v-else></span>
-                    <button @click="saveItem" :disabled="!formData.name" class="px-6 py-2 rounded-xl text-sm font-bold bg-[#F27D26] text-white disabled:opacity-50">保存</button>
+                <div class="p-5 bg-gray-50 flex justify-between border-t border-gray-100">
+                    <button v-if="editingItem" @click="deleteItem" class="text-red-500 text-sm font-bold hover:bg-red-50 px-3 py-2 rounded-lg">🗑 削除</button><span v-else></span>
+                    <button @click="saveItem" :disabled="!formData.name" class="px-8 py-3 rounded-xl text-sm font-bold bg-[#F27D26] text-white disabled:opacity-50 shadow-md hover:bg-[#d66a1d] transition-colors">保存する</button>
                 </div>
             </div>
         </div>
 
-        <div v-if="loading" class="fixed inset-0 bg-white/80 flex flex-col items-center justify-center z-[100] no-print">
+        <div v-if="loading" class="fixed inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-[100] no-print">
             <div class="animate-spin h-10 w-10 border-4 border-[#F27D26] border-t-transparent rounded-full mb-4"></div><p class="font-bold text-gray-600 animate-pulse">同期中...</p>
         </div>
     </div>
@@ -174,7 +203,7 @@
         const { createApp, ref, computed, onMounted, nextTick } = Vue;
 
         // ★★★ここに新しいGASのURLを貼り付けてください★★★
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyeTqkOwT34hI58bFzd9AlNiPVEu613t_r-DFA2iqw8Iox7N8DasCuAdPpe_U29JwZE/exec";
+        const GAS_URL = "ここに新しいURLを貼る";
 
         createApp({
             setup() {
@@ -191,7 +220,6 @@
                 const editingItem = ref(null);
                 const formData = ref({});
 
-                // データの取得と並び替え
                 const fetchItems = async () => {
                     loading.value = true;
                     try {
@@ -202,14 +230,12 @@
                     loading.value = false;
                 };
 
-                // 12時間チェックリセット判定
                 const isChecked = (item) => {
                     if (!item.lastCheckedAt) return false;
                     const twelveHours = 12 * 60 * 60 * 1000;
                     return (Date.now() - item.lastCheckedAt) < twelveHours;
                 };
 
-                // チェックボタンを押した時
                 const toggleCheck = async (item) => {
                     item.lastCheckedAt = isChecked(item) ? 0 : Date.now();
                     try {
@@ -217,7 +243,6 @@
                     } catch (e) {}
                 };
 
-                // 在庫の操作
                 const updateStock = async (item, diff) => {
                     const newStock = item.stock + diff;
                     if (newStock < 0) return;
@@ -227,7 +252,6 @@
                     } catch (e) {}
                 };
 
-                // ドラッグ＆ドロップ並べ替えモード切替
                 const toggleSortMode = async () => {
                     isSortMode.value = !isSortMode.value;
                     if (isSortMode.value) {
@@ -237,7 +261,6 @@
                         sortableInstance = new Sortable(el, {
                             handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost',
                             onEnd: async (evt) => {
-                                // 画面上の並び順をデータに反映
                                 const newArray = [...items.value];
                                 const [movedItem] = newArray.splice(evt.oldIndex, 1);
                                 newArray.splice(evt.newIndex, 0, movedItem);
@@ -247,8 +270,6 @@
                                     return { name: item.name, sortOrder: item.sortOrder };
                                 });
                                 items.value = newArray;
-
-                                // バックグラウンドでGASに一括送信
                                 fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "updateSort", sortData: sortData }) });
                             }
                         });
@@ -257,7 +278,6 @@
                     }
                 };
 
-                // 画像圧縮
                 const handleImageUpload = (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -294,7 +314,6 @@
                     } catch (e) { loading.value = false; }
                 };
 
-                // フィルタと進捗
                 const uniqueLocations = computed(() => [...new Set(items.value.map(i => i.location).filter(Boolean))]);
                 const filteredItems = computed(() => {
                     return items.value.filter(item => {
@@ -304,11 +323,15 @@
                         return matchSearch && matchLoc && matchChecked;
                     });
                 });
+                
                 const progressPercent = computed(() => {
                     if (items.value.length === 0) return 0;
                     const checkedCount = items.value.filter(i => isChecked(i)).length;
                     return Math.round((checkedCount / items.value.length) * 100);
                 });
+                
+                const orderItemsCount = computed(() => items.value.filter(i => i.stock < i.threshold).length);
+                
                 const groupedOrderItems = computed(() => {
                     return items.value.filter(i => i.stock < i.threshold).reduce((acc, item) => {
                         const v = item.vendor || '未分類';
@@ -329,7 +352,7 @@
                 };
 
                 onMounted(fetchItems);
-                return { items, loading, activeTab, searchQuery, currentLoc, showUncheckedOnly, isSortMode, isModalOpen, editingItem, formData, uniqueLocations, filteredItems, progressPercent, groupedOrderItems, toggleSortMode, toggleCheck, isChecked, updateStock, openModal, saveItem, deleteItem, handleImageUpload, printPage, exportCSV };
+                return { items, loading, activeTab, searchQuery, currentLoc, showUncheckedOnly, isSortMode, isModalOpen, editingItem, formData, uniqueLocations, filteredItems, progressPercent, orderItemsCount, groupedOrderItems, toggleSortMode, toggleCheck, isChecked, updateStock, openModal, saveItem, deleteItem, handleImageUpload, printPage, exportCSV };
             }
         }).mount('#app');
     </script>
