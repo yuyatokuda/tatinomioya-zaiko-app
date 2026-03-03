@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>在庫管理アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div id="app" class="max-w-md mx-auto min-h-screen pb-24 shadow-lg bg-white">
+        <header class="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-20">
+            <h1 class="font-bold text-lg">在庫管理</h1>
+            <div class="flex gap-2">
+                <button class="bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-bold">在庫チェック</button>
+                <button class="bg-orange-100 px-3 py-1.5 rounded-lg text-xs font-bold text-orange-600">
+                    発注リスト <span class="bg-orange-500 text-white px-1.5 rounded-full">{{ shortageItems.length }}</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-4 bg-white border-b sticky top-[61px] z-10">
+            <input v-model="searchQuery" type="text" placeholder="商品名で検索..." class="w-full bg-gray-100 p-3 rounded-xl text-sm mb-4 outline-none focus:ring-2 ring-blue-500">
+            <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <button v-for="loc in uniqueLocations" :key="loc" @click="currentLoc = loc" 
+                    :class="['px-4 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border', currentLoc === loc ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200']">
+                    {{ loc }}
+                </button>
+            </div>
+        </div>
+
+        <div class="px-4 py-2 flex justify-between items-center mt-2">
+            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">チェック進捗</span>
+            <span class="text-green-500 text-xs font-bold">{{ progress }}%</span>
+        </div>
+        <div class="px-4 mb-6">
+            <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-green-400 h-full transition-all duration-500" :style="{ width: progress + '%' }"></div>
+            </div>
+        </div>
+
+        <div v-if="shortageItems.length > 0" class="mx-4 mb-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">⚠️</span>
+                <div>
+                    <p class="text-[10px] text-orange-800 font-bold uppercase">在庫不足</p>
+                    <p class="text-sm font-bold text-orange-900">{{ shortageItems.length }} 品目が不足しています</p>
+                </div>
+            </div>
+            <button class="bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-transform">リストを見る</button>
+        </div>
+
+        <div class="px-4 space-y-4">
+            <div v-for="item in filteredItems" :key="item.name" class="bg-white border border-gray-100 rounded-3xl p-4 flex items-center shadow-sm hover:shadow-md transition-shadow">
+                <div class="w-20 h-20 bg-gray-50 rounded-2xl mr-4 flex items-center justify-center text-[10px] text-gray-300 border border-gray-50">画像</div>
+                
+                <div class="flex-1">
+                    <div class="flex gap-2 mb-1">
+                        <span class="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md font-bold uppercase tracking-tighter">{{ item.location }}</span>
+                        <span v-if="item.stock < item.threshold" class="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-md font-bold border border-orange-200">不足</span>
+                    </div>
+                    <h3 class="font-bold text-gray-900 text-base mb-1">{{ item.name }}</h3>
+                    <div class="flex items-center text-[10px] text-gray-400 font-medium">
+                        <span>基準: {{ item.threshold }}</span>
+                        <span class="mx-2">•</span>
+                        <span>{{ item.vendor }}</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center bg-gray-50 rounded-2xl p-1 border border-gray-100">
+                    <button @click="updateStock(item, -1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white active:bg-gray-200 transition-colors text-xl font-medium">-</button>
+                    <span class="w-10 text-center font-bold text-lg">{{ item.stock }}</span>
+                    <button @click="updateStock(item, 1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-white active:bg-gray-200 transition-colors text-xl font-medium">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="loading" class="fixed inset-0 bg-white/90 flex flex-col items-center justify-center z-50">
+            <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+            <p class="text-sm font-bold text-gray-500">読み込み中...</p>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        // ★★★ここに「ウェブアプリURL」を貼り付けてください★★★
+        const GAS_URL = "ここにあなたのURLを貼る";
+
+        createApp({
+            setup() {
+                const items = ref([]);
+                const loading = ref(true);
+                const searchQuery = ref("");
+                const currentLoc = ref("全部");
+
+                const fetchItems = async () => {
+                    loading.value = true;
+                    try {
+                        const res = await fetch(GAS_URL);
+                        items.value = await res.json();
+                    } catch (e) { alert("データの読み込みに失敗しました。URLを確認してください。"); }
+                    loading.value = false;
+                };
+
+                const updateStock = async (item, diff) => {
+                    const newStock = item.stock + diff;
+                    if (newStock < 0) return;
+                    
+                    item.stock = newStock; // 先に画面の数字を変える
+                    
+                    try {
+                        await fetch(GAS_URL, {
+                            method: "POST",
+                            mode: "no-cors",
+                            body: JSON.stringify({ name: item.name, stock: newStock })
+                        });
+                    } catch (e) { console.error(e); }
+                };
+
+                const uniqueLocations = computed(() => {
+                    const locs = ["全部", ...new Set(items.value.map(i => i.location))];
+                    return locs.filter(l => l && l !== "undefined");
+                });
+
+                const filteredItems = computed(() => {
+                    return items.value.filter(item => {
+                        const matchSearch = item.name.includes(searchQuery.value);
+                        const matchLoc = currentLoc.value === "全部" || item.location === currentLoc.value;
+                        return matchSearch && matchLoc;
+                    });
+                });
+
+                const shortageItems = computed(() => items.value.filter(i => i.stock < i.threshold));
+                const progress = computed(() => items.value.length ? Math.round((items.value.filter(i => i.stock > 0).length / items.value.length) * 100) : 0);
+
+                onMounted(fetchItems);
+
+                return { items, loading, searchQuery, currentLoc, uniqueLocations, filteredItems, shortageItems, progress, updateStock };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
